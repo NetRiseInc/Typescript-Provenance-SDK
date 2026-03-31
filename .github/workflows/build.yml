@@ -1,0 +1,95 @@
+name: Build TypeScript SDK
+
+on:
+  pull_request:
+    types: [closed]
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Get package info
+        id: package_info
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          echo "package_name=${PACKAGE_NAME}" >> $GITHUB_OUTPUT
+          echo "package_version=${PACKAGE_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create tarball
+        run: npm pack
+
+      - name: Find tarball
+        id: find_tarball
+        run: |
+          TARBALL=$(ls *.tgz 2>/dev/null | head -1)
+          echo "tarball_path=${TARBALL}" >> $GITHUB_OUTPUT
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: netrise-provenance-sdk-${{ steps.package_info.outputs.package_version }}
+          path: |
+            *.tgz
+            dist/
+          retention-days: 30
+
+  upload-to-netrise:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get package info
+        id: package_info
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          echo "package_name=${PACKAGE_NAME}" >> $GITHUB_OUTPUT
+          echo "package_version=${PACKAGE_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: netrise-provenance-sdk-${{ steps.package_info.outputs.package_version }}
+          path: artifact
+
+      - name: Find tarball
+        id: find_tarball
+        run: |
+          TARBALL=$(ls artifact/*.tgz 2>/dev/null | head -1)
+          echo "tarball_path=${TARBALL}" >> $GITHUB_OUTPUT
+
+      - name: Upload to NetRise Platform
+        uses: NetRiseInc/netrise-bca-action@v1.0.7
+        with:
+          netrise_token: ${{ secrets.NETRISE_TOKEN }}
+          artifact_path: ${{ steps.find_tarball.outputs.tarball_path }}
+          artifact_name: ${{ steps.package_info.outputs.package_name }}-${{ steps.package_info.outputs.package_version }}
+
+      - name: Report upload status
+        run: |
+          echo "Upload completed for ${{ steps.package_info.outputs.package_name }} v${{ steps.package_info.outputs.package_version }}"

@@ -1,0 +1,44 @@
+{
+  "name": "@netrise/provenance-sdk",
+  "version": "0.1.0",
+  "description": "Provenance API TypeScript/JavaScript SDK for package, repository, and contributor intelligence",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "generate": "openapi-typescript ../../provenance-api/internal/api/spec/public/openapi.bundled.yaml -o src/generated/api.d.ts",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "PROVENANCE_INTEGRATION_TEST=1 vitest run tests/integration.test.ts",
+    "clean": "rm -rf dist src/generated"
+  },
+  "keywords": [
+    "provenance",
+    "sdk",
+    "netrise",
+    "openapi",
+    "security",
+    "sbom"
+  ],
+  "author": "NetRise <support@netrise.io>",
+  "license": "MIT",
+  "dependencies": {
+    "openapi-fetch": "^0.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/pg": "^8.11.0",
+    "@vitest/coverage-v8": "^4.1.2",
+    "dotenv": "^16.3.0",
+    "openapi-typescript": "^7.0.0",
+    "pg": "^8.11.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.2"
+  }
+}
